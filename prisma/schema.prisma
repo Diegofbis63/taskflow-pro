@@ -9,9 +9,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -33,10 +32,11 @@ model User {
   createdTasks   Task[]    @relation("TaskCreator")
   comments       Comment[]
   activities     Activity[]
-  exportRequests ExportRequest[]
+  exportRequests ExportRequest[] @relation("ExportRequests")
   teamInvitations TeamInvitation[] @relation("InvitedUser")
   createdTeams   Team[]    @relation("TeamCreator")
   createdInvitations TeamInvitation[] @relation("InvitedBy")
+  scheduledExports ScheduledExport[] @relation("ScheduledExports")
 }
 
 model Project {
@@ -99,7 +99,7 @@ model Task {
   assignee    User?      @relation("TaskAssignee", fields: [assigneeId], references: [id])
   creator     User       @relation("TaskCreator", fields: [creatorId], references: [id])
   comments    Comment[]
-  activities  Activity[]
+  activities  Activity[] @relation("ActivityTask")
   
   // Índices para consultas optimizadas
   @@index([projectId, status])
@@ -138,7 +138,8 @@ model Activity {
   // Relations
   user        User?    @relation(fields: [userId], references: [id])
   project     Project? @relation(fields: [projectId], references: [id])
-  task        Task?    @relation(fields: [entityId], references: [id])
+  task        Task?    @relation("ActivityTask", fields: [entityId], references: [id])
+  team        Team?    @relation("TeamActivities", fields: [entityId], references: [id])
   
   // Índices para consultas optimizadas
   @@index([projectId])
@@ -206,7 +207,7 @@ model Team {
   members     TeamMember[]
   projects    Project[]  @relation("TeamProjects")
   invitations TeamInvitation[]
-  activities  Activity[]
+  activities  Activity[] @relation("TeamActivities")
   
   @@index([createdById])
 }
@@ -216,7 +217,7 @@ model TeamMember {
   teamId      String
   userId      String
   role        TeamRole @default(MEMBER)
-  permissions String[] @default(["read"]) // Array de permisos
+  permissions Json     @default("[\"read\"]") // Array de permisos como JSON
   joinedAt    DateTime @default(now())
   
   // Relations
@@ -281,7 +282,7 @@ model ScheduledExport {
   format      ExportFormat
   filters     Json?    // Filtros flexibles en JSON
   schedule    String   // Expresión cron
-  recipients  String[] // Lista de emails
+  recipients  Json     // Lista de emails como JSON
   isActive    Boolean  @default(true)
   lastRunAt   DateTime?
   nextRunAt   DateTime
@@ -290,7 +291,7 @@ model ScheduledExport {
   updatedAt   DateTime @updatedAt
   
   // Relations
-  creator     User @relation(fields: [createdBy], references: [id])
+  creator     User @relation("ScheduledExports", fields: [createdBy], references: [id])
   
   @@index([createdBy])
   @@index([isActive])
