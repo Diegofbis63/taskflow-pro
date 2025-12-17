@@ -10,7 +10,8 @@
       "NEXT_TELEMETRY_DISABLED": "1",
       "PRISMA_GENERATE_SKIP_AUTOINSTALL": "1",
       "PRISMA_CLIENT_ENGINE_TYPE": "binary",
-      "PRISMA_GENERATE_DATAPROXY": "1"
+      "PRISMA_GENERATE_DATAPROXY": "1",
+      "NODE_ENV": "production"
     }
   },
   "functions": {
@@ -24,10 +25,5 @@
     "JWT_SECRET": "@jwt_secret",
     "NEXTAUTH_SECRET": "@nextauth_secret",
     "NEXTAUTH_URL": "@nextauth_url"
-  },
-  "build": {
-    "env": {
-      "NODE_ENV": "production"
-    }
   }
 }
