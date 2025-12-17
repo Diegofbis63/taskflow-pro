@@ -15,20 +15,25 @@ function getClientIdentifier(request: NextRequest): string {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   
-  // Static files and resources
-  if (pathname.startsWith('/_next') || 
-      pathname.startsWith('/favicon') ||
-      pathname.includes('.')) {
+  // Static files and resources - exclude them early
+  if (
+    pathname.startsWith('/_next') || 
+    pathname.startsWith('/favicon') ||
+    pathname.includes('.') ||
+    pathname.startsWith('/api/health') ||
+    pathname.startsWith('/api/robots') ||
+    pathname.startsWith('/api/sitemap')
+  ) {
     return NextResponse.next()
   }
   
   // Public routes that don't require authentication
-  const publicRoutes = ['/', '/api/auth', '/api/projects']
-  if (publicRoutes.some(route => pathname === route)) {
+  const publicRoutes = ['/', '/api/auth/login', '/api/auth/register']
+  if (publicRoutes.some(route => pathname === route || pathname.startsWith(route))) {
     return NextResponse.next()
   }
   
-  // For API routes, check JWT in Authorization header or cookie
+  // API routes - check JWT
   if (pathname.startsWith('/api/')) {
     try {
       const token = request.headers.get('authorization')?.startsWith('Bearer ') 
@@ -51,20 +56,13 @@ export function middleware(request: NextRequest) {
       }
 
       // Add user info to request headers for downstream usage
-      const requestWithUser = new Request(request, {
-        headers: {
-          ...request.headers,
-          'x-user-id': payload.userId,
-          'x-user-email': payload.email,
-          'x-user-name': payload.name,
-          'x-user-role': payload.role
-        }
-      })
+      const response = NextResponse.next()
+      response.headers.set('x-user-id', payload.userId)
+      response.headers.set('x-user-email', payload.email)
+      response.headers.set('x-user-name', payload.name || '')
+      response.headers.set('x-user-role', payload.role || 'MEMBER')
 
-      // Continue to the actual API route
-      return NextResponse.next({
-        request: requestWithUser
-      })
+      return response
     } catch (error) {
       console.error('Middleware auth error:', error)
       return NextResponse.json(
@@ -74,11 +72,12 @@ export function middleware(request: NextRequest) {
     }
   }
   
-  // For protected routes, check authentication
+  // Protected routes - check authentication
   if (pathname.startsWith('/dashboard') || 
       pathname.startsWith('/projects') || 
       pathname.startsWith('/tasks') || 
-      pathname.startsWith('/team')) {
+      pathname.startsWith('/team') ||
+      pathname.startsWith('/analytics')) {
     try {
       const token = request.cookies.get('auth-token')?.value
       
@@ -93,21 +92,7 @@ export function middleware(request: NextRequest) {
         return NextResponse.redirect(loginUrl)
       }
 
-      // Add user info to request headers for downstream usage
-      const requestWithUser = new Request(request, {
-        headers: {
-          ...request.headers,
-          'x-user-id': payload.userId,
-          'x-user-email': payload.email,
-          'x-user-name': payload.name,
-          'x-user-role': payload.role
-        }
-      })
-
-      // Continue to the actual route
-      return NextResponse.next({
-        request: requestWithUser
-      })
+      return NextResponse.next()
     } catch (error) {
       console.error('Middleware auth error:', error)
       const loginUrl = new URL('/', request.url)
