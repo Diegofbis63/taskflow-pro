@@ -139,8 +139,8 @@ model Activity {
   // Relations
   user        User?    @relation(fields: [userId], references: [id])
   project     Project? @relation(fields: [projectId], references: [id])
-  task        Task?    @relation("ActivityTask", fields: [entityId], references: [id])
-  team        Team?    @relation("TeamActivities", fields: [entityId], references: [id])
+  task        Task?    @relation("ActivityTask", fields: [entityId], references: [id], map: "activity_task_fkey")
+  team        Team?    @relation("TeamActivities", fields: [entityId], references: [id], map: "activity_team_fkey")
   
   // Índices para consultas optimizadas
   @@index([projectId])
