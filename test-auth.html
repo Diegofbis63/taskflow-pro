@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test de Autenticación</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ccc; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        button { padding: 10px 20px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Test de Flujo de Autenticación</h1>
+    
+    <div class="test-section">
+        <h2>Paso 1: Limpiar Sesión</h2>
+        <button onclick="clearSession()">Limpiar Session Storage</button>
+        <div id="clear-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Paso 2: Verificar Estado Actual</h2>
+        <button onclick="checkAuth()">Verificar Autenticación</button>
+        <div id="auth-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Paso 3: Abrir Aplicación</h2>
+        <button onclick="openApp()">Abrir TaskFlow Pro</button>
+    </div>
+
+    <script>
+        function clearSession() {
+            sessionStorage.clear();
+            document.getElementById('clear-result').innerHTML = 
+                '<div class="success">✅ Sesión limpiada correctamente</div>';
+        }
+        
+        function checkAuth() {
+            const session = sessionStorage.getItem('taskflow_session');
+            const email = sessionStorage.getItem('taskflow_user_email');
+            const name = sessionStorage.getItem('taskflow_user_name');
+            const regEmail = sessionStorage.getItem('registered_email');
+            const regName = sessionStorage.getItem('registered_name');
+            const regPassword = sessionStorage.getItem('registered_password');
+            
+            let html = '<h3>Estado de Session Storage:</h3>';
+            html += `<p><strong>Sesión Activa:</strong> ${session || 'No'}</p>`;
+            html += `<p><strong>Email Usuario:</strong> ${email || 'No'}</p>`;
+            html += `<p><strong>Nombre Usuario:</strong> ${name || 'No'}</p>`;
+            html += `<h4>Datos de Registro:</h4>`;
+            html += `<p><strong>Email Registrado:</strong> ${regEmail || 'No'}</p>`;
+            html += `<p><strong>Nombre Registrado:</strong> ${regName || 'No'}</p>`;
+            html += `<p><strong>Contraseña Registrada:</strong> ${regPassword ? '***' : 'No'}</p>`;
+            
+            document.getElementById('auth-result').innerHTML = html;
+        }
+        
+        function openApp() {
+            window.open('http://localhost:3000', '_blank');
+        }
+    </script>
+</body>
+</html>

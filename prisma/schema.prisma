@@ -9,24 +9,327 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?   // Nullable para ahorrar espacio
+  password      String?   // Nullable para modo demo, pero necesario para registro real
+  avatar        String?   // URL opcional, nullable
+  role          Role      @default(MEMBER)
+  lastActiveAt  DateTime? // Para analytics y actividad
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  ownedProjects Project[] @relation("ProjectOwner")
+  projectMembers ProjectMember[]
+  teamMembers    TeamMember[]
+  assignedTasks  Task[]    @relation("TaskAssignee")
+  createdTasks   Task[]    @relation("TaskCreator")
+  comments       Comment[]
+  activities     Activity[]
+  exportRequests ExportRequest[]
+  teamInvitations TeamInvitation[] @relation("InvitedUser")
+  createdTeams   Team[]    @relation("TeamCreator")
+  createdInvitations TeamInvitation[] @relation("InvitedBy")
 }
 
-model Post {
+model Project {
+  id          String        @id @default(cuid())
+  title       String
+  description String?        // Nullable para ahorrar espacio
+  color       String?        @default("#3B82F6")
+  status      ProjectStatus @default(PLANNING)
+  priority    Priority       @default(MEDIUM)
+  startDate   DateTime?      // Nullable para ahorrar espacio
+  endDate     DateTime?      // Nullable para ahorrar espacio
+  budget      Float?         // Presupuesto opcional
+  budgetUsed  Float?         // Presupuesto usado opcional
+  ownerId     String
+  teamId      String?        // Team assignment opcional
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  
+  // Relations
+  owner       User            @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  team        Team?           @relation("TeamProjects", fields: [teamId], references: [id])
+  members     ProjectMember[]
+  tasks       Task[]
+  activities  Activity[]
+}
+
+model ProjectMember {
   id        String   @id @default(cuid())
-  title     String
-  content   String?
-  published Boolean  @default(false)
+  projectId String
+  userId    String
+  role      ProjectRole @default(MEMBER)
+  joinedAt  DateTime @default(now())
+  
+  // Relations
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([projectId, userId])
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  title       String
+  description String?    // Nullable para ahorrar espacio
+  status      TaskStatus @default(TODO)
+  priority    Priority   @default(MEDIUM)
+  projectId   String
+  assigneeId  String?    // Nullable para ahorrar espacio
+  creatorId   String
+  position    Float      @default(0)
+  dueDate       DateTime?  // Nullable para ahorrar espacio
+  estimatedHours Float?    // Horas estimadas opcionales
+  actualHours   Float?     // Horas reales opcionales
+  tags          String?    @default("") // String simple en lugar de array para ahorrar espacio
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  
+  // Relations
+  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee    User?      @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  creator     User       @relation("TaskCreator", fields: [creatorId], references: [id])
+  comments    Comment[]
+  activities  Activity[]
+  
+  // Índices para consultas optimizadas
+  @@index([projectId, status])
+  @@index([assigneeId])
+  @@index([creatorId])
+  @@index([createdAt])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String   // Text limitado para ahorrar espacio
+  taskId    String
   authorId  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  
+  // Relations
+  task      Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author    User @relation(fields: [authorId], references: [id])
+  
+  // Índices para consultas optimizadas
+  @@index([taskId])
+  @@index([authorId])
+}
+
+model Activity {
+  id          String       @id @default(cuid())
+  action      ActivityType
+  entityType  EntityType
+  entityId    String
+  projectId   String?     // Nullable para ahorrar espacio
+  userId      String
+  metadata    Json?        // JSON opcional para datos flexibles
+  createdAt   DateTime     @default(now())
+  
+  // Relations
+  user        User?    @relation(fields: [userId], references: [id])
+  project     Project? @relation(fields: [projectId], references: [id])
+  task        Task?    @relation(fields: [entityId], references: [id])
+  
+  // Índices para consultas optimizadas
+  @@index([projectId])
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+enum ProjectRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ActivityType {
+  CREATED
+  UPDATED
+  DELETED
+  MOVED
+  ASSIGNED
+  COMMENTED
+  STATUS_CHANGED
+}
+
+enum EntityType {
+  PROJECT
+  TASK
+  COMMENT
+  TEAM
+  USER
+}
+
+// New Enterprise Models
+
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  // Nullable para ahorrar espacio
+  department  String?  // Departamento opcional
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  createdBy   User       @relation("TeamCreator", fields: [createdById], references: [id])
+  members     TeamMember[]
+  projects    Project[]  @relation("TeamProjects")
+  invitations TeamInvitation[]
+  activities  Activity[]
+  
+  @@index([createdById])
+}
+
+model TeamMember {
+  id          String   @id @default(cuid())
+  teamId      String
+  userId      String
+  role        TeamRole @default(MEMBER)
+  permissions String[] @default(["read"]) // Array de permisos
+  joinedAt    DateTime @default(now())
+  
+  // Relations
+  team        Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([teamId, userId])
+  @@index([teamId])
+  @@index([userId])
+}
+
+model TeamInvitation {
+  id          String        @id @default(cuid())
+  teamId      String
+  email       String
+  role        TeamRole      @default(MEMBER)
+  invitedById String
+  token       String        @unique
+  expiresAt   DateTime
+  acceptedAt  DateTime?     // Cuando fue aceptada
+  createdAt   DateTime      @default(now())
+  
+  // Relations
+  team        Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  invitedBy   User          @relation("InvitedBy", fields: [invitedById], references: [id])
+  invitedUser User?         @relation("InvitedUser", fields: [email], references: [email])
+  
+  @@index([teamId])
+  @@index([email])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+model ExportRequest {
+  id            String                @id @default(cuid())
+  type          ExportType
+  format        ExportFormat
+  filters       Json?                 // Filtros flexibles en JSON
+  template      String?               // Plantilla opcional
+  includeCharts Boolean               @default(true)
+  includeDetails Boolean               @default(true)
+  status        ExportStatus          @default(PENDING)
+  downloadUrl   String?               // URL de descarga
+  expiresAt     DateTime?             // Cuando expira el archivo
+  requestedBy   String
+  createdAt     DateTime              @default(now())
+  completedAt   DateTime?             // Cuando se completó
+  
+  // Relations
+  requestedByUser User @relation("ExportRequests", fields: [requestedBy], references: [id])
+  
+  @@index([requestedBy])
+  @@index([status])
+  @@index([type])
+  @@index([expiresAt])
+}
+
+model ScheduledExport {
+  id          String   @id @default(cuid())
+  name        String
+  type        ExportType
+  format      ExportFormat
+  filters     Json?    // Filtros flexibles en JSON
+  schedule    String   // Expresión cron
+  recipients  String[] // Lista de emails
+  isActive    Boolean  @default(true)
+  lastRunAt   DateTime?
+  nextRunAt   DateTime
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  creator     User @relation(fields: [createdBy], references: [id])
+  
+  @@index([createdBy])
+  @@index([isActive])
+  @@index([nextRunAt])
+}
+
+enum TeamRole {
+  MEMBER
+  LEAD
+  ADMIN
+}
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  COMPLETED
+  ON_HOLD
+  CANCELLED
+}
+
+enum ExportType {
+  PROJECTS
+  TASKS
+  TEAMS
+  ANALYTICS
+  REPORTS
+}
+
+enum ExportFormat {
+  PDF
+  EXCEL
+  CSV
+  JSON
+}
+
+enum ExportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  EXPIRED
 }
