@@ -1,5 +1,5 @@
 // This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// learn more about it in docs: https://pris.ly/d/prisma-schema
 
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
@@ -9,8 +9,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -217,7 +218,7 @@ model TeamMember {
   teamId      String
   userId      String
   role        TeamRole @default(MEMBER)
-  permissions Json     @default("[\"read\"]") // Array de permisos como JSON
+  permissions String[] @default(["read"]) // Array de permisos
   joinedAt    DateTime @default(now())
   
   // Relations
@@ -282,7 +283,7 @@ model ScheduledExport {
   format      ExportFormat
   filters     Json?    // Filtros flexibles en JSON
   schedule    String   // Expresión cron
-  recipients  Json     // Lista de emails como JSON
+  recipients  String[] // Lista de emails
   isActive    Boolean  @default(true)
   lastRunAt   DateTime?
   nextRunAt   DateTime
