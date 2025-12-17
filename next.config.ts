@@ -20,6 +20,15 @@ const nextConfig: NextConfig = {
   },
   // Turbopack configuration (empty to avoid conflicts)
   turbopack: {},
+  // Proxy configuration
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: '/api/:path*',
+      },
+    ]
+  },
   // Disable expensive features in production
   logging: {
     fetches: {
