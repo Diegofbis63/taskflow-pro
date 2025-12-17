@@ -2,16 +2,6 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { verifyToken } from '@/lib/auth'
 
-// Get client identifier for rate limiting
-function getClientIdentifier(request: NextRequest): string {
-  const forwarded = request.headers.get('x-forwarded-for')
-  const ip = forwarded ? forwarded.split(',')[0] : request.ip
-  const userAgent = request.headers.get('user-agent') || ''
-  
-  // Use IP + user agent hash as identifier
-  return Buffer.from(`${ip}:${userAgent}`).toString('base64')
-}
-
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   

@@ -34,6 +34,13 @@
       "destination": "/api/$1"
     }
   ],
+  "env": {
+    "NEXT_TELEMETRY_DISABLED": "1",
+    "PRISMA_GENERATE_SKIP_AUTOINSTALL": "1",
+    "PRISMA_CLIENT_ENGINE_TYPE": "binary",
+    "PRISMA_GENERATE_DATAPROXY": "1",
+    "NODE_ENV": "production"
+  },
   "build": {
     "env": {
       "NEXT_TELEMETRY_DISABLED": "1",
