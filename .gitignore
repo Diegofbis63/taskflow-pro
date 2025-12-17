@@ -46,4 +46,11 @@ dev.log
 test
 prompt
 
-server.log
+server.lognode_modules/*.node
+*.log
+node_modules/
+*.log
+.next/
+node_modules/
+*.log
+.next/

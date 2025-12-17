@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
+import { db } from './db';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
 
@@ -17,24 +18,18 @@ export const loginSchema = z.object({
   password: z.string().min(1, 'Password is required')
 });
 
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  password: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 export interface AuthUser {
   id: string;
   name: string;
   email: string;
+  role?: string;
 }
 
 export interface JWTPayload {
   userId: string;
   email: string;
+  name: string;
+  role?: string;
   iat?: number;
   exp?: number;
 }
@@ -68,7 +63,9 @@ export async function comparePassword(password: string, hash: string): Promise<b
 export function generateToken(user: AuthUser): string {
   const payload: JWTPayload = {
     userId: user.id,
-    email: user.email
+    email: user.email,
+    name: user.name,
+    role: user.role
   };
 
   return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
@@ -89,10 +86,31 @@ export function verifyToken(token: string): JWTPayload | null {
 /**
  * Register a new user
  */
-export async function registerUser(userData: z.infer<typeof userSchema>): Promise<AuthResponse> {
+export async function signUp(email: string, name: string, password: string): Promise<AuthResponse> {
   try {
+    if (!db) {
+      return {
+        success: false,
+        message: 'Database not available',
+        error: 'DATABASE_UNAVAILABLE'
+      };
+    }
+
     // Validate input
-    const validatedData = userSchema.parse(userData);
+    const validatedData = userSchema.parse({ email, name, password });
+    
+    // Check if user already exists
+    const existingUser = await db.user.findUnique({
+      where: { email: validatedData.email }
+    });
+
+    if (existingUser) {
+      return {
+        success: false,
+        message: 'Email already exists',
+        error: 'DUPLICATE_EMAIL'
+      };
+    }
     
     // Hash password
     const hashedPassword = await hashPassword(validatedData.password);
@@ -106,33 +124,20 @@ export async function registerUser(userData: z.infer<typeof userSchema>): Promis
       }
     });
 
-    // Generate token
-    const token = generateToken({
+    const authUser: AuthUser = {
       id: newUser.id,
-      name: newUser.name,
-      email: newUser.email
-    });
+      name: newUser.name || '',
+      email: newUser.email,
+      role: newUser.role
+    };
 
     return {
       success: true,
       message: 'User created successfully',
-      user: {
-        id: newUser.id,
-        name: newUser.name,
-        email: newUser.email
-      },
-      token
+      user: authUser
     };
   } catch (error: any) {
     console.error('Registration error:', error);
-    
-    if (error.code === 'P2002') {
-      return {
-        success: false,
-        message: 'Email already exists',
-        error: 'DUPLICATE_EMAIL'
-      };
-    }
     
     return {
       success: false,
@@ -145,17 +150,25 @@ export async function registerUser(userData: z.infer<typeof userSchema>): Promis
 /**
  * Login user
  */
-export async function loginUser(credentials: z.infer<typeof loginSchema>): Promise<AuthResponse> {
+export async function signIn(email: string, password: string): Promise<AuthResponse> {
   try {
+    if (!db) {
+      return {
+        success: false,
+        message: 'Database not available',
+        error: 'DATABASE_UNAVAILABLE'
+      };
+    }
+
     // Validate input
-    const validatedData = loginSchema.parse(credentials);
+    const validatedData = loginSchema.parse({ email, password });
     
     // Find user in database
     const user = await db.user.findUnique({
       where: { email: validatedData.email }
     });
 
-    if (!user) {
+    if (!user || !user.password) {
       return {
         success: false,
         message: 'Invalid credentials',
@@ -174,21 +187,20 @@ export async function loginUser(credentials: z.infer<typeof loginSchema>): Promi
       };
     }
 
-    // Generate token
-    const token = generateToken({
+    const authUser: AuthUser = {
       id: user.id,
-      name: user.name,
-      email: user.email
-    });
+      name: user.name || '',
+      email: user.email,
+      role: user.role
+    };
+
+    // Generate token
+    const token = generateToken(authUser);
 
     return {
       success: true,
       message: 'Login successful',
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email
-      },
+      user: authUser,
       token
     };
   } catch (error: any) {
@@ -202,5 +214,16 @@ export async function loginUser(credentials: z.infer<typeof loginSchema>): Promi
   }
 }
 
-// Backward compatibility exports
-export { createUser, authenticateUser, verifyAuth } from './auth';
+/**
+ * Sign out user
+ */
+export async function signOut(): Promise<AuthResponse> {
+  return {
+    success: true,
+    message: 'Sign out successful'
+  };
+}
+
+// Backward compatibility
+export const registerUser = signUp;
+export const loginUser = signIn;

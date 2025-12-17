@@ -1,6 +1,14 @@
-import { MetadataRoute } from 'next';
-import { robots } from '@/lib/seo';
+import { MetadataRoute } from 'next'
 
 export default function robots(): MetadataRoute.Robots {
-  return robots();
+  return {
+    rules: [
+      {
+        userAgent: '*',
+        allow: '/',
+        disallow: ['/api/', '/admin/', '/_next/'],
+      },
+    ],
+    sitemap: 'https://taskflow-pro.vercel.app/sitemap.xml',
+  }
 }

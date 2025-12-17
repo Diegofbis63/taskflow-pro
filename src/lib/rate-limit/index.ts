@@ -16,7 +16,7 @@ interface RateLimitResult {
 class RateLimiter {
   private requests: Map<string, { count: number; resetTime: number }> = new Map();
 
-  constructor(private config: RateLimitConfig) {}
+  constructor(public config: RateLimitConfig) {}
 
   check(request: NextRequest): RateLimitResult {
     const identifier = this.getIdentifier(request);
@@ -78,11 +78,29 @@ class RateLimiter {
     };
   }
 
+  // Alias for backward compatibility
+  isAllowed(identifier: string): { allowed: boolean; resetTime?: number } {
+    const now = Date.now();
+    const current = this.requests.get(identifier);
+    
+    if (!current) {
+      return { allowed: true };
+    }
+    
+    if (now > current.resetTime) {
+      return { allowed: true };
+    }
+    
+    return {
+      allowed: current.count < this.config.maxRequests,
+      resetTime: current.resetTime
+    };
+  }
+
   private getIdentifier(request: NextRequest): string {
     // Try to get IP from various headers
     const forwardedFor = request.headers.get('x-forwarded-for');
     const realIp = request.headers.get('x-real-ip');
-    const ip = request.ip;
 
     if (forwardedFor) {
       return forwardedFor.split(',')[0].trim();
@@ -90,10 +108,6 @@ class RateLimiter {
 
     if (realIp) {
       return realIp;
-    }
-
-    if (ip) {
-      return ip;
     }
 
     // Fallback to user agent or random identifier
@@ -133,6 +147,9 @@ export const authRateLimit = new RateLimiter({
   maxRequests: 5, // 5 attempts per 15 minutes
   message: 'Too many authentication attempts. Please try again later.'
 });
+
+// Alias for backward compatibility
+export const authRateLimiter = authRateLimit;
 
 export const generalRateLimit = new RateLimiter({
   windowMs: 15 * 60 * 1000, // 15 minutes

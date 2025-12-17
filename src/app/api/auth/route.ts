@@ -18,10 +18,10 @@ function getTokenFromRequest(request: NextRequest): string | null {
 // Get client identifier for rate limiting
 function getClientIdentifier(request: NextRequest): string {
   const forwarded = request.headers.get('x-forwarded-for')
-  const ip = forwarded ? forwarded.split(',')[0] : request.ip
   const userAgent = request.headers.get('user-agent') || ''
   
-  // Use IP + user agent hash as identifier
+  // Use forwarded IP + user agent hash as identifier
+  const ip = forwarded ? forwarded.split(',')[0] : 'unknown'
   return Buffer.from(`${ip}:${userAgent}`).toString('base64')
 }
 
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
         { 
           status: 429,
           headers: {
-            'X-RateLimit-Limit': authRateLimiter.maxRequests.toString(),
+            'X-RateLimit-Limit': authRateLimiter.config.maxRequests.toString(),
             'X-RateLimit-Remaining': '0',
             'X-RateLimit-Reset': rateLimitResult.resetTime?.toString() || '',
           }
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
         { 
           status: 429,
           headers: {
-            'X-RateLimit-Limit': authRateLimiter.maxRequests.toString(),
+            'X-RateLimit-Limit': authRateLimiter.config.maxRequests.toString(),
             'X-RateLimit-Remaining': '0',
             'X-RateLimit-Reset': rateLimitResult.resetTime?.toString() || '',
           }

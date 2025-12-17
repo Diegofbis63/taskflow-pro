@@ -1,4 +1,6 @@
 import { Metadata } from 'next';
+import { QueryProvider } from '@/components/providers/query-provider'
+import { Toaster } from '@/components/ui/toaster'
 
 // Static metadata for better performance
 export const metadata: Metadata = {
@@ -76,7 +78,10 @@ export default function RootLayout({
         <link rel="manifest" href="/site.webmanifest" />
       </head>
       <body>
-        {children}
+        <QueryProvider>
+          {children}
+          <Toaster />
+        </QueryProvider>
       </body>
     </html>
   );
