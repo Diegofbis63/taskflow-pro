@@ -3,44 +3,23 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
   typescript: {
-    ignoreBuildErrors: false, // Enable TypeScript checking for production
+    ignoreBuildErrors: false,
   },
-  reactStrictMode: true, // Enable React Strict Mode
+  reactStrictMode: true,
   serverExternalPackages: ['@prisma/client'],
-  swcMinify: true, // Enable SWC minification
-  compress: true, // Enable gzip compression
-  poweredByHeader: false, // Remove powered by header
+  compress: true,
+  poweredByHeader: false,
   experimental: {
-    optimizeCss: true, // Enable CSS optimization
-    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'], // Optimize imports
-  },
-  webpack: (config, { dev, isServer }) => {
-    // Optimize bundle size
-    if (!dev && !isServer) {
-      config.optimization.splitChunks = {
-        chunks: 'all',
-        cacheGroups: {
-          vendor: {
-            test: /[\\/]node_modules[\\/]/,
-            name: 'vendors',
-            chunks: 'all',
-          },
-        },
-      };
-    }
-    
-    return config;
+    optimizeCss: true,
+    optimizePackageImports: ['lucide-react'],
   },
   // Performance optimizations
   images: {
     formats: ['image/webp', 'image/avif'],
     minimumCacheTTL: 60 * 60 * 24 * 7, // 7 days
   },
-  // Build optimizations
-  buildId: 'build', // Fixed build ID for better caching
-  generateBuildId: async () => {
-    return 'build'
-  },
+  // Turbopack configuration (empty to avoid conflicts)
+  turbopack: {},
   // Disable expensive features in production
   logging: {
     fetches: {

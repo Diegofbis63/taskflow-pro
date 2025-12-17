@@ -33,5 +33,11 @@
       "source": "/api/(.*)",
       "destination": "/api/$1"
     }
-  ]
+  ],
+  "build": {
+    "env": {
+      "NEXT_TELEMETRY_DISABLED": "1",
+      "PRISMA_GENERATE_SKIP_AUTOINSTALL": "1"
+    }
+  }
 }
